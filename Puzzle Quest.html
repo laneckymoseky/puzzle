@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Puzzle Quest</title>
+<style>
+:root{--bg:#f6f5ff;--card:#fff;--text:#1d1b2e;--muted:#6b6880;--accent:#6c4cf1;--accent2:#ff7a59;--ok:#1fa971;--line:#dcd8f0;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14121f;--card:#201d32;--text:#f0eefb;--muted:#a09cbd;--accent:#8f78ff;--accent2:#ff8f70;--ok:#3ddc97;--line:#38345a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14121f;--card:#201d32;--text:#f0eefb;--muted:#a09cbd;--accent:#8f78ff;--accent2:#ff8f70;--ok:#3ddc97;--line:#38345a;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#root{max-width:480px;margin:0 auto;padding:20px 16px 40px;text-align:center}
+h1{font-size:1.5rem;margin:8px 0 2px}
+p{color:var(--muted);margin:4px 0 14px}
+.steps{display:flex;gap:8px;justify-content:center;margin:12px 0 18px}
+.step{padding:5px 12px;border-radius:99px;border:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+.step.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.step.done{background:var(--ok);color:#fff;border-color:var(--ok)}
+.board{display:grid;gap:8px;margin:0 auto;width:100%;max-width:380px}
+.cell{aspect-ratio:1;border:0;border-radius:12px;background:var(--card);color:var(--text);font-size:2rem;font-weight:700;cursor:pointer;box-shadow:0 1px 0 var(--line),0 0 0 1px var(--line) inset;transition:transform .12s,background .2s}
+.cell:active{transform:scale(.94)}
+.cell.up{background:var(--accent);color:#fff}
+.cell.match{background:var(--ok);color:#fff}
+.cell.blank{background:transparent;box-shadow:none;cursor:default}
+.cell.lit{background:var(--accent2);box-shadow:0 0 14px var(--accent2)}
+.cell.t{font-size:1.8rem}
+.stat{margin-top:14px;color:var(--muted);font-size:.9rem}
+.btn{display:inline-block;margin-top:16px;padding:12px 22px;border:0;border-radius:12px;background:var(--accent);color:#fff;font-size:1rem;font-weight:600;cursor:pointer}
+.btn.alt{background:var(--card);color:var(--text);box-shadow:0 0 0 1px var(--line) inset}
+.win{margin-top:12px;color:var(--ok);font-weight:700}
+video{width:100%;border-radius:14px;margin:12px 0;background:#000}
+.file{margin-top:8px;font-size:.85rem;color:var(--muted)}
+
+/* New Animations */
+@keyframes slowFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.fade-video { animation: slowFadeIn 4s ease-in forwards; }
+
+.puzzle-container { display: grid; grid-template-columns: repeat(4, 1fr); width: 300px; height: 300px; margin: 20px auto; gap: 2px; }
+@keyframes floatPiece { 
+  0% { opacity: 0; transform: translateY(30px) scale(0.8) rotate(5deg); } 
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0); } 
+}
+.puzzle-piece { 
+  background-image: url('imageone.jfif'); /* Change extension if needed */
+  background-size: 300px 300px; 
+  animation: floatPiece 1s ease-out forwards; 
+  opacity: 0; 
+  border-radius: 4px;
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script>
+const h = React.createElement, { useState, useEffect, useRef } = React;
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function Next({ onNext, label }) {
+  return h("div", null, h("div", { className: "win" }, "Solved! 🎉"), h("button", { className: "btn", onClick: onNext }, label));
+}
+
+/* LEVEL 1 - EASY */
+function Memory({ onWin }) {
+  const [cards] = useState(() => shuffle(["🍎","🚀","🎧","🌵","🐙","🎲"].flatMap(e => [e, e])));
+  const [up, setUp] = useState([]), [done, setDone] = useState([]), [moves, setMoves] = useState(0);
+  const won = done.length === cards.length;
+  const flip = i => {
+    if (up.length === 2 || up.includes(i) || done.includes(i)) return;
+    const n = [...up, i]; setUp(n);
+    if (n.length === 2) {
+      setMoves(m => m + 1);
+      if (cards[n[0]] === cards[n[1]]) { setDone(d => [...d, ...n]); setUp([]); }
+      else setTimeout(() => setUp([]), 700);
+    }
+  };
+  return h("div", null,
+    h("div", { className: "board", style: { gridTemplateColumns: "repeat(4,1fr)" } },
+      cards.map((c, i) => {
+        const show = up.includes(i) || done.includes(i);
+        return h("button", { key: i, className: "cell " + (done.includes(i) ? "match" : show ? "up" : ""), onClick: () => flip(i) }, show ? c : "?");
+      })),
+    h("div", { className: "stat" }, "Moves: " + moves),
+    won && h(Next, { onNext: onWin, label: "Next level →" }));
+}
+
+/* LEVEL 2 - MEDIUM */
+function Slide({ onWin }) {
+  const [t, setT] = useState(() => {
+    let a = [1,2,3,4,5,6,7,8,0], b = a.indexOf(0), prev = -1;
+    for (let k = 0; k < 120; k++) {
+      const r = Math.floor(b / 3), c = b % 3, opts = [];
+      if (r > 0) opts.push(b - 3); if (r < 2) opts.push(b + 3); if (c > 0) opts.push(b - 1); if (c < 2) opts.push(b + 1);
+      const o = opts.filter(x => x !== prev), n = o[Math.floor(Math.random() * o.length)];
+      [a[b], a[n]] = [a[n], a[b]]; prev = b; b = n;
+    }
+    return a;
+  });
+  const [moves, setMoves] = useState(0);
+  const won = t.every((v, i) => v === (i + 1) % 9);
+  const tap = i => {
+    if (won) return;
+    const b = t.indexOf(0), r = Math.floor(i / 3), c = i % 3, br = Math.floor(b / 3), bc = b % 3;
+    if (Math.abs(r - br) + Math.abs(c - bc) !== 1) return;
+    const a = t.slice(); [a[i], a[b]] = [a[b], a[i]]; setT(a); setMoves(m => m + 1);
+  };
+  return h("div", null,
+    h("div", { className: "board", style: { gridTemplateColumns: "repeat(3,1fr)" } },
+      t.map((v, i) => h("button", { key: i, className: "cell t " + (v === 0 ? "blank" : won ? "match" : "up"), onClick: () => tap(i) }, v || ""))),
+    h("div", { className: "stat" }, "Order the numbers 1–8. Moves: " + moves),
+    won && h(Next, { onNext: onWin, label: "Final level →" }));
+}
+
+/* LEVEL 3 - HARD */
+function Lights({ onWin }) {
+  const press = (g, i) => {
+    const a = g.slice(), r = Math.floor(i / 5), c = i % 5;
+    [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dr, dc]) => {
+      const rr = r + dr, cc = c + dc; if (rr >= 0 && rr < 5 && cc >= 0 && cc < 5) a[rr * 5 + cc] = !a[rr * 5 + cc];
+    });
+    return a;
+  };
+  const [g, setG] = useState(() => {
+    let a = Array(25).fill(false);
+    shuffle([...Array(25).keys()]).slice(0, 9).forEach(i => a = press(a, i));
+    return a.some(x => x) ? a : press(a, 12);
+  });
+  const [moves, setMoves] = useState(0);
+  const won = g.every(x => !x);
+  return h("div", null,
+    h("div", { className: "board", style: { gridTemplateColumns: "repeat(5,1fr)", gap: "6px" } },
+      g.map((on, i) => h("button", { key: i, className: "cell " + (won ? "match" : on ? "lit" : ""), onClick: () => { if (!won) { setG(press(g, i)); setMoves(m => m + 1); } } }, ""))),
+    h("div", { className: "stat" }, "Turn every light off. Tapping flips a tile and its neighbours. Moves: " + moves),
+    won && h(Next, { onNext: onWin, label: "Claim your reward 🏆" }));
+}
+
+/* INTERMEDIATE PUZZLE IMAGE TRANSITION */
+function ImageTransition({ onComplete }) {
+  const pieces = Array.from({ length: 16 });
+  return h("div", null, 
+    h("h2", null, "Level Cleared!"),
+    h("div", { className: "puzzle-container" },
+      pieces.map((_, i) => {
+        const x = (i % 4) * (300 / 4);
+        const y = Math.floor(i / 4) * (300 / 4);
+        const delay = (Math.random() * 0.8).toFixed(2) + "s";
+        return h("div", { 
+          key: i, 
+          className: "puzzle-piece", 
+          style: { backgroundPosition: `-${x}px -${y}px`, animationDelay: delay } 
+        });
+      })
+    ),
+    h("button", { className: "btn", onClick: onComplete, style: { marginTop: '20px' } }, "Continue")
+  );
+}
+
+/* REWARD (Video instead of fireworks) */
+function Reward({ onRestart }) {
+  return h("div", null,
+    h("h1", null, "🏆 You beat all 3 levels!"),
+    h("p", null, "Here's your reward."),
+    h("video", { 
+      className: "fade-video", 
+      src: "reward_video.mp4", /* Replace with your video file name */
+      controls: true, 
+      autoPlay: true, 
+      playsInline: true 
+    }),
+    h("button", { className: "btn alt", onClick: onRestart }, "Play again"));
+}
+
+function App() {
+  const [lv, setLv] = useState(0);
+  const [transitioning, setTransitioning] = useState(false);
+  
+  const names = ["Easy", "Medium", "Hard"], titles = ["Memory Match", "Slide Puzzle", "Lights Out"];
+  
+  const triggerTransition = () => setTransitioning(true);
+  const completeTransition = () => {
+    setTransitioning(false);
+    setLv(l => l + 1);
+  };
+
+  if (transitioning) {
+    return h(ImageTransition, { onComplete: completeTransition });
+  }
+
+  return h("div", null,
+    lv < 3 && h("div", null,
+      h("h1", null, "Puzzle Quest"),
+      h("p", null, "Level " + (lv + 1) + ": " + titles[lv]),
+      h("div", { className: "steps" }, names.map((n, i) => h("span", { key: n, className: "step " + (i < lv ? "done" : i === lv ? "on" : "") }, n))),
+      lv === 0 && h(Memory, { key: 0, onWin: triggerTransition }),
+      lv === 1 && h(Slide, { key: 1, onWin: triggerTransition }),
+      lv === 2 && h(Lights, { key: 2, onWin: triggerTransition })),
+    lv === 3 && h(Reward, { onRestart: () => setLv(0) }));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>
